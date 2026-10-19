@@ -1,0 +1,39 @@
+name: Tests
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.12', '3.13']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Environment
+        run: python -VV
+      - name: Full suite including authenticated HTTP and CLI
+        run: python -X utf8 -W error::ResourceWarning -m unittest discover -s tests -v
+      - name: Disposable CLI course
+        shell: bash
+        run: |
+          set -euo pipefail
+          python examples/create_demo.py "$RUNNER_TEMP/courserelay-course"
+          python -m courserelay --data-dir "$RUNNER_TEMP/courserelay-index" add "中文示例" "$RUNNER_TEMP/courserelay-course"
+          python -m courserelay --data-dir "$RUNNER_TEMP/courserelay-index" scan 1
+          python -m courserelay --data-dir "$RUNNER_TEMP/courserelay-index" board 1
+          python -m courserelay --data-dir "$RUNNER_TEMP/courserelay-index" handoff 1
